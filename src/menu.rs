@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span};
 
 use crate::{text, theme};
 
+/// Matches shown at once.
 pub const ROWS: usize = 6;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,6 +24,7 @@ impl Command {
 }
 
 #[derive(Default)]
+/// Commands filtered by what follows the `/`. Call [`Self::sync`] after every edit.
 pub struct Menu {
     commands: Vec<Command>,
     matches: Vec<usize>,

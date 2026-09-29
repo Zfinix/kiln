@@ -12,6 +12,7 @@ use crate::render::{Inset, Insets, Renderable, wrapped};
 use crate::theme;
 use crate::view::View;
 
+/// Rows a [`ListSelectionView`] shows before it scrolls.
 pub const VISIBLE_ROWS: usize = 10;
 
 /// First row of a `rows`-tall window that keeps `selected` near the middle.
@@ -22,6 +23,7 @@ pub fn window_start(selected: usize, len: usize, rows: usize) -> usize {
     selected.saturating_sub(rows / 2).min(len - rows)
 }
 
+/// One row. `event` is sent when it is picked.
 pub struct SelectionItem<E> {
     pub name: String,
     pub description: String,
@@ -33,6 +35,8 @@ pub struct SelectionItem<E> {
 /// move, e.g. to preview a theme while the user navigates.
 pub type HoverHook<E> = Box<dyn Fn(&SelectionItem<E>)>;
 
+/// A filterable picker. Type to filter, press a number to pick, or `y`/`n`
+/// on a two-item yes/no list. The pick is sent on the channel it was built with.
 pub struct ListSelectionView<E> {
     title: String,
     items: Vec<SelectionItem<E>>,

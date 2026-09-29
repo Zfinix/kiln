@@ -1,3 +1,5 @@
+//! Terminal restore on panic, early return, or normal exit.
+
 use std::panic;
 
 /// Restores the terminal on drop so no code path (early `?`, panic, normal
@@ -8,6 +10,7 @@ pub struct TuiGuard {
 }
 
 impl TuiGuard {
+    /// Chain `restore` in front of the current panic hook. It runs again on drop.
     pub fn install(restore: fn()) -> Self {
         let original = panic::take_hook();
         panic::set_hook(Box::new(move |info| {

@@ -23,4 +23,5 @@ pub mod theme;
 pub mod view;
 pub mod wrap;
 
+/// Braille spinner frames; advance one every ~100 ms.
 pub const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];

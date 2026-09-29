@@ -63,6 +63,8 @@ fn word(seed: u64, elapsed: Duration) -> &'static str {
     WORDS[(mixed >> 33) as usize % WORDS.len()]
 }
 
+/// One row: spinner, activity label, elapsed time. It schedules its own
+/// frames while drawn, so it animates without the caller doing anything.
 pub struct StatusWidget {
     detail: Option<String>,
     started: Instant,

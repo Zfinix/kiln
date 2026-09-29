@@ -98,6 +98,7 @@ pub fn notice(text: &str, width: usize) -> Vec<Line<'static>> {
     )
 }
 
+/// An error message marked with `✗`, one row per line of `text`.
 pub fn error(text: &str, width: usize) -> Vec<Line<'static>> {
     let lines = text
         .lines()
@@ -160,6 +161,7 @@ pub fn group_row(header: &str, label: &str, open: bool, width: usize) -> Vec<Lin
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Where a [`plan`] step stands.
 pub enum StepStatus {
     Pending,
     InProgress,
@@ -261,7 +263,8 @@ pub fn sources(label: &str, sources: &[(String, String)], width: usize) -> Vec<L
     prepend_blank(hang(lines, bullet(), width))
 }
 
-/// A tool call with its output, elided in the middle when it is long.
+/// A tool call with its output, elided in the middle when it is long. Colour
+/// escapes in `output` are kept.
 pub fn tool(label: &str, output: &str, failed: bool, width: usize) -> Vec<Line<'static>> {
     let head_style = if failed {
         Style::default()
@@ -281,14 +284,14 @@ pub fn tool(label: &str, output: &str, failed: bool, width: usize) -> Vec<Line<'
         theme::get().dimmer_style()
     };
     for (i, text) in elide(&body).into_iter().enumerate() {
-        let style = match text {
-            Elided::Text(_) => out_style,
-            Elided::Gap(_) => theme::get().faint_style(),
-        };
-        lines.push(Line::from(vec![
-            branch(i == 0),
-            Span::styled(text.into_string(), style),
-        ]));
+        let mut spans = vec![branch(i == 0)];
+        match text {
+            Elided::Text(row) => spans.extend(crate::text::from_ansi(row, out_style)),
+            Elided::Gap(_) => {
+                spans.push(Span::styled(text.into_string(), theme::get().faint_style()))
+            }
+        }
+        lines.push(Line::from(spans));
     }
     prepend_blank(hang(lines, bullet(), width))
 }

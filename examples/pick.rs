@@ -1,6 +1,9 @@
 //! A one-question picker, in the spirit of `gum choose`: pass the options as
 //! arguments, type to filter, press a number or enter to pick. The answer is
 //! printed once the pane is gone; esc exits with status 1.
+//!
+//! The pane draws on the terminal even when stdout is captured, so
+//! `choice=$(cargo run -q --example pick -- rust go zig)` works in a script.
 
 use anyhow::Result;
 use tokio::sync::mpsc;
@@ -57,6 +60,7 @@ async fn main() -> Result<()> {
     );
 
     let picked = {
+        let _tty = OnTerminal::redirect()?;
         let _guard = TuiGuard::install(restore_raw);
         let mut tui = Tui::new(8)?;
         while !view.is_complete() {
@@ -78,4 +82,55 @@ async fn main() -> Result<()> {
         None => std::process::exit(1),
     }
     Ok(())
+}
+
+/// Points stdout at the terminal while it lives, when stdout is a pipe, and
+/// puts the pipe back on drop so the answer still goes to whoever captured it.
+struct OnTerminal {
+    #[cfg(unix)]
+    saved: Option<std::os::fd::OwnedFd>,
+}
+
+impl OnTerminal {
+    #[cfg(unix)]
+    fn redirect() -> Result<Self> {
+        use std::io::IsTerminal;
+        use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+
+        if std::io::stdout().is_terminal() {
+            return Ok(Self { saved: None });
+        }
+        let tty = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open("/dev/tty")?;
+        // SAFETY: dup and dup2 only duplicate descriptors this process owns;
+        // the saved copy is wrapped in an OwnedFd so it is closed exactly once.
+        let saved = unsafe { libc::dup(libc::STDOUT_FILENO) };
+        anyhow::ensure!(saved >= 0, "could not save stdout");
+        let saved = unsafe { OwnedFd::from_raw_fd(saved) };
+        anyhow::ensure!(
+            unsafe { libc::dup2(tty.as_raw_fd(), libc::STDOUT_FILENO) } >= 0,
+            "could not draw on the terminal"
+        );
+        Ok(Self { saved: Some(saved) })
+    }
+
+    #[cfg(not(unix))]
+    fn redirect() -> Result<Self> {
+        Ok(Self {})
+    }
+}
+
+impl Drop for OnTerminal {
+    fn drop(&mut self) {
+        #[cfg(unix)]
+        if let Some(saved) = &self.saved {
+            use std::io::Write;
+            use std::os::fd::AsRawFd;
+            let _ = std::io::stdout().flush();
+            // SAFETY: restores the descriptor saved in `redirect`, still open.
+            unsafe { libc::dup2(saved.as_raw_fd(), libc::STDOUT_FILENO) };
+        }
+    }
 }

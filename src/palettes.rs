@@ -283,7 +283,7 @@ pub const SYNTHWAVE: Theme = Theme {
 };
 
 /// Github Dark Default: modern light blues and calm backgrounds.
-/// See: https://github.com/primer/primitives/blob/main/data/colors/themes/dark_dimmed.json
+/// See: <https://github.com/primer/primitives/blob/main/data/colors/themes/dark_dimmed.json>
 pub const GITHUB_DARK: Theme = Theme {
     text: Color::Rgb(0xc9, 0xd1, 0xd9),
     dim: Color::Rgb(0x8b, 0x94, 0x9e),

@@ -1,7 +1,7 @@
 # kiln
 
 [![CI](https://github.com/Zfinix/kiln/actions/workflows/ci.yml/badge.svg)](https://github.com/Zfinix/kiln/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/Zfinix/kiln/blob/main/LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org)
 [![ratatui](https://img.shields.io/badge/ratatui-0.30-4fd6e0.svg)](https://ratatui.rs)
 
@@ -17,7 +17,7 @@ I built these pieces for the [Aster](https://github.com/Zfinix/aster) coding
 agent and its chat client, cinder, then pulled them out so other CLIs can use
 them without copying files around.
 
-![The kiln demo: a session header, a user message, a streamed markdown reply with a table and highlighted code, and the slash-command menu open under the prompt](assets/demo.png)
+![The kiln demo: a session header, a user message, a streamed markdown reply with a table and highlighted code, and the slash-command menu open under the prompt](https://raw.githubusercontent.com/Zfinix/kiln/main/assets/demo.png)
 
 ## Features
 
@@ -129,10 +129,11 @@ A scripted tour: type a message and a reply streams in, then try `/theme`,
 ### pick
 
 A one-question picker, like `gum choose`. Pass options as arguments, type to
-filter, press a number or enter. The pane clears and the answer is printed on
-its own line: `cargo run --example pick -- rust go zig`.
+filter, press a number or enter. The pane draws on the terminal even when
+stdout is captured, so it works in scripts:
+`choice=$(cargo run -q --example pick -- rust go zig)`.
 
-![A picker filtered to three crates with the second one selected](assets/pick.png)
+![A picker filtered to three crates with the second one selected](https://raw.githubusercontent.com/Zfinix/kiln/main/assets/pick.png)
 
 ### tasks
 
@@ -140,14 +141,14 @@ A task runner. The plan and a spinner stay live in the pane while steps run.
 Finished steps and their output go into scrollback, and a failed step ends in
 an error box.
 
-![A task list with two steps done, one in progress and a spinner below it](assets/tasks.png)
+![A task list with two steps done, one in progress and a spinner below it](https://raw.githubusercontent.com/Zfinix/kiln/main/assets/tasks.png)
 
 ### approve
 
 Permission prompts. Requests that arrive while one is open wait in a queue,
 and the one-time allow is always preselected.
 
-![A permission prompt for a file edit with a tinted diff preview and one more request waiting](assets/approve.png)
+![A permission prompt for a file edit with a tinted diff preview and one more request waiting](https://raw.githubusercontent.com/Zfinix/kiln/main/assets/approve.png)
 
 ### markdown
 
@@ -155,14 +156,14 @@ Streams a markdown file into scrollback a few words at a time, the way a model
 reply arrives. This one has no async runtime; it drives `InlineTerm` directly.
 Pass a path to render your own file: `cargo run --example markdown -- README.md`.
 
-![Rendered markdown with a heading, a list with code spans, a table, a quote and a highlighted code block](assets/markdown.png)
+![Rendered markdown with a heading, a list with code spans, a table, a quote and a highlighted code block](https://raw.githubusercontent.com/Zfinix/kiln/main/assets/markdown.png)
 
 ### themes
 
 All 16 built-in themes, printed with `text::to_ansi`. It uses no raw mode and
 no viewport, which is all a one-shot CLI needs.
 
-![Sixteen theme swatches in two columns, each with a tinted star, colour chips and diff and code samples](assets/themes.png)
+![Sixteen theme swatches in two columns, each with a tinted star, colour chips and diff and code samples](https://raw.githubusercontent.com/Zfinix/kiln/main/assets/themes.png)
 
 ### chat
 
@@ -209,7 +210,7 @@ CI runs the same checks on Linux, macOS, and Windows.
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](LICENSE).
+Licensed under the [Apache License, Version 2.0](https://github.com/Zfinix/kiln/blob/main/LICENSE).
 
 `src/term.rs` is derived from ratatui's `Terminal`
 ([MIT](https://github.com/ratatui/ratatui/blob/main/LICENSE), © the Ratatui

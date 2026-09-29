@@ -18,6 +18,8 @@ fn code_chip() -> Style {
 }
 
 #[derive(Default)]
+/// Turns streamed markdown into finished lines. A line leaves only once it
+/// can no longer change; tables wait for their last row.
 pub struct MarkdownStream {
     buf: String,
     in_fence: bool,
@@ -52,6 +54,7 @@ impl MarkdownStream {
         out
     }
 
+    /// True when nothing is held back waiting for more text.
     pub fn is_empty(&self) -> bool {
         self.buf.is_empty() && self.table.is_empty()
     }

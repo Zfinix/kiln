@@ -507,8 +507,7 @@ fn translate(update: &Value) -> Vec<Event> {
 }
 
 /// Flatten the text blocks a tool call carries, falling back to the raw output
-/// when it reports none. Colour escapes are stripped, since the transcript
-/// styles output itself.
+/// when it reports none. Colour escapes are kept; `cells::tool` renders them.
 fn tool_output(update: &Value) -> String {
     let joined: String = update["content"]
         .as_array()
@@ -516,27 +515,10 @@ fn tool_output(update: &Value) -> String {
         .flatten()
         .map(|b| str_of(&b["content"]["text"]))
         .collect();
-    let raw = match joined.is_empty() {
+    match joined.is_empty() {
         true => str_of(&update["rawOutput"]),
         false => joined,
-    };
-
-    let mut out = String::with_capacity(raw.len());
-    let mut chars = raw.chars();
-    while let Some(c) = chars.next() {
-        if c != '\x1b' {
-            out.push(c);
-            continue;
-        }
-        if chars.next() == Some('[') {
-            for c in chars.by_ref() {
-                if ('@'..='~').contains(&c) {
-                    break;
-                }
-            }
-        }
     }
-    out
 }
 
 #[cfg(test)]

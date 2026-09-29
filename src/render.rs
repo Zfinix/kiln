@@ -7,9 +7,14 @@ use ratatui::layout::Rect;
 use ratatui::text::Line;
 use ratatui::widgets::{Paragraph, Widget, WidgetRef, Wrap};
 
+/// Anything that can say how tall it is at a width and draw itself. Both
+/// answers come from one object, so layout and drawing cannot disagree.
 pub trait Renderable {
+    /// Draw into `area`, which is `desired_height` rows tall.
     fn render(&self, area: Rect, buf: &mut Buffer);
+    /// Rows needed at `width` columns.
     fn desired_height(&self, width: u16) -> u16;
+    /// Where the caret goes, if this component owns it.
     fn cursor_pos(&self, _area: Rect) -> Option<(u16, u16)> {
         None
     }
@@ -76,6 +81,7 @@ pub struct Probe<'a, R> {
 }
 
 impl<'a, R: Renderable> Probe<'a, R> {
+    /// Record the rect `inner` is drawn into in `into`.
     pub fn new(inner: R, into: &'a std::cell::Cell<Option<Rect>>) -> Self {
         Self { inner, into }
     }
@@ -182,6 +188,7 @@ pub fn wrapped(lines: Vec<Line<'static>>) -> Paragraph<'static> {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Padding in rows (top, bottom) and columns (left, right).
 pub struct Insets {
     pub top: u16,
     pub left: u16,
@@ -209,6 +216,7 @@ impl Insets {
     }
 }
 
+/// Shrinking a [`Rect`] by [`Insets`].
 pub trait RectExt {
     fn inset(&self, insets: Insets) -> Rect;
 }

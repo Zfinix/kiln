@@ -27,7 +27,9 @@ pub enum TuiEvent {
     Key(KeyEvent),
     Mouse(MouseEvent),
     Paste(String),
+    /// The terminal changed size; call [`Tui::resized`].
     Resize,
+    /// A requested frame is due; redraw.
     Draw,
 }
 
@@ -55,6 +57,8 @@ impl FrameRequester {
     }
 }
 
+/// [`InlineTerm`] plus raw mode, bracketed paste, async events, and frame
+/// scheduling. Drop it to hand the terminal back.
 pub struct Tui {
     term: InlineTerm,
     events: Option<EventStream>,
@@ -66,6 +70,7 @@ pub struct Tui {
 }
 
 impl Tui {
+    /// Enter raw mode and open a `height`-row viewport at the cursor.
     pub fn new(height: u16) -> Result<Self> {
         enable_raw_mode()?;
         execute!(io::stdout(), EnableBracketedPaste)?;
@@ -97,6 +102,7 @@ impl Tui {
         }
     }
 
+    /// A handle for asking for a redraw from anywhere, e.g. a background task.
     pub fn frame_requester(&self) -> FrameRequester {
         FrameRequester {
             tx: self.frame_tx.clone(),

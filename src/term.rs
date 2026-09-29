@@ -51,6 +51,8 @@ impl Frame<'_> {
     }
 }
 
+/// A live viewport at the bottom of the terminal. Finished lines go above it,
+/// into the terminal's own scrollback, via [`Self::insert_lines`].
 pub struct InlineTerm<W: Write = Stdout> {
     backend: CrosstermBackend<W>,
     buffers: [Buffer; 2],
@@ -219,6 +221,7 @@ impl<W: Write> InlineTerm<W> {
         })
     }
 
+    /// Columns to wrap content to, capped so very wide terminals stay readable.
     pub fn width(&self) -> u16 {
         content_width(self.screen)
     }
@@ -236,6 +239,7 @@ impl<W: Write> InlineTerm<W> {
             .expect("writing to a buffer cannot fail")
     }
 
+    /// Screen row of the viewport's first line.
     pub fn viewport_top(&self) -> u16 {
         self.viewport.y
     }

@@ -12,6 +12,7 @@ use crate::theme;
 pub const MAX_PREVIEW_ROWS: usize = 10;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// What an answer does. Only the `*Once` kinds are ever preselected.
 pub enum ChoiceKind {
     AllowOnce,
     AllowAlways,
@@ -29,6 +30,7 @@ impl ChoiceKind {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// One answer a request accepts. `id` is what you send back to whoever asked.
 pub struct Choice {
     pub id: String,
     pub label: String,
@@ -45,6 +47,7 @@ pub struct Request<T> {
     pub payload: T,
 }
 
+/// The open request plus any waiting behind it. Draw it with [`Self::lines`].
 pub struct Approvals<T> {
     current: Option<Request<T>>,
     queue: VecDeque<Request<T>>,

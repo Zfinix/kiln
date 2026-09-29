@@ -7,6 +7,7 @@ use std::ops::Range;
 use ratatui::text::{Line, Span};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+/// Display columns `text` takes; CJK and emoji count as two.
 pub fn width(text: &str) -> usize {
     UnicodeWidthStr::width(text)
 }

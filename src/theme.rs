@@ -48,6 +48,7 @@ fn overshoot(t: f32) -> f32 {
 
 static ACTIVE: RwLock<ThemeState> = RwLock::new(ThemeState::stable(Theme::DEFAULT));
 
+/// Make `t` the active theme, blending from the current colours over 450 ms.
 pub fn set(t: Theme) {
     let mut state = ACTIVE.write().unwrap();
     if state.target.same_theme(&t) {
@@ -97,6 +98,7 @@ pub struct ThemeEntry {
 }
 
 impl ThemeEntry {
+    /// An entry for [`all`]-style listings, e.g. your own palettes next to the built-ins.
     pub fn builtin(name: &str, description: &str, theme: &Theme) -> Self {
         Self {
             name: name.to_string(),
@@ -147,11 +149,13 @@ pub fn all() -> &'static [ThemeEntry] {
     })
 }
 
+/// Look up a built-in theme by the name [`all`] lists it under.
 pub fn named(name: &str) -> Option<&'static ThemeEntry> {
     all().iter().find(|t| t.name == name)
 }
 
 #[derive(Debug, Clone, Copy)]
+/// One palette. Every component reads its colours from the active one via [`get`].
 pub struct Theme {
     pub text: Color,
     pub dim: Color,
@@ -187,6 +191,7 @@ pub struct Theme {
 }
 
 impl Theme {
+    /// Warm dark palette with a coral accent.
     pub const DEFAULT: Theme = Theme {
         text: Color::Rgb(0xff, 0xff, 0xff),
         dim: Color::Rgb(0x8a, 0x8a, 0x85),
@@ -232,6 +237,7 @@ impl Theme {
         ],
     };
 
+    /// For terminals with a light background.
     pub const LIGHT: Theme = Theme {
         text: Color::Rgb(0x1a, 0x1a, 0x1a),
         dim: Color::Rgb(0x6a, 0x6a, 0x66),

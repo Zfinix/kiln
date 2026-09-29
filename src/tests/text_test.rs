@@ -61,3 +61,29 @@ fn ansi_output_carries_weight_and_colour_and_resets_after_each_span() {
         "plain \x1b[1;38;2;1;2;3mbold\x1b[0m\x1b[31;48;5;236m dim\x1b[0m\n"
     );
 }
+
+#[test]
+fn ansi_input_becomes_styled_spans_on_top_of_the_base_style() {
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::Span;
+    let base = Style::default().fg(Color::Rgb(9, 9, 9));
+    let row = "\x1b]0;title\x07ok \x1b[1;32mpassed\x1b[0m \x1b[38;2;1;2;3mrgb\x1b[39m done\x1b[K";
+    assert_eq!(
+        from_ansi(row, base),
+        vec![
+            Span::styled("ok ", base),
+            Span::styled("passed", base.fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" ", base),
+            Span::styled("rgb", base.fg(Color::Rgb(1, 2, 3))),
+            Span::styled(" done", base),
+        ]
+    );
+}
+
+#[test]
+fn ansi_round_trips_through_to_ansi() {
+    use ratatui::style::Style;
+    let row = "\x1b[31mred\x1b[0m \x1b[1;38;2;1;2;3mbold rgb\x1b[0m";
+    let line = Line::from(from_ansi(row, Style::default()));
+    assert_eq!(to_ansi(&[line]), format!("{row}\n"));
+}

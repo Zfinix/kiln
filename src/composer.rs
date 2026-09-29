@@ -15,6 +15,8 @@ const FOLD_PATH_MIN_LEN: usize = 28;
 const MAX_TOKEN_CHARS: usize = 40;
 
 #[derive(Default)]
+/// The multi-line prompt editor. It draws nothing itself: ask it for rows and
+/// a caret position with [`Self::render`].
 pub struct Composer {
     text: String,
     cursor: usize,
@@ -206,6 +208,7 @@ impl Composer {
         std::mem::take(&mut self.refs)
     }
 
+    /// Drop the draft, folded pastes, and collected path references.
     pub fn clear(&mut self) {
         self.text.clear();
         self.cursor = 0;
