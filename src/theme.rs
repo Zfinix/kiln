@@ -1,0 +1,520 @@
+//! The active colour theme. Set at startup, swapped at runtime; a swap blends
+//! the colours over 450 ms so the shift is visible but not jarring.
+
+use std::sync::{OnceLock, RwLock};
+use std::time::{Duration, Instant};
+
+use ratatui::style::{Color, Modifier, Style};
+
+use crate::palettes;
+
+#[derive(Debug, Clone)]
+struct ThemeState {
+    current: Theme,
+    target: Theme,
+    transition_start: Option<Instant>,
+}
+
+impl ThemeState {
+    const fn stable(theme: Theme) -> Self {
+        Self {
+            current: theme,
+            target: theme,
+            transition_start: None,
+        }
+    }
+
+    fn get_interpolated(&self) -> Theme {
+        match self.transition_start {
+            Some(start) => {
+                let t = (start.elapsed().as_secs_f32() / TRANSITION.as_secs_f32()).min(1.0);
+                self.current.lerp(&self.target, overshoot(t))
+            }
+            None => self.target,
+        }
+    }
+}
+
+#[cfg(not(test))]
+const TRANSITION: Duration = Duration::from_millis(450);
+#[cfg(test)]
+const TRANSITION: Duration = Duration::ZERO;
+
+fn overshoot(t: f32) -> f32 {
+    const C: f32 = 2.4;
+    let p = t - 1.0;
+    1.0 + p * p * ((C + 1.0) * p + C)
+}
+
+static ACTIVE: RwLock<ThemeState> = RwLock::new(ThemeState::stable(Theme::DEFAULT));
+
+pub fn set(t: Theme) {
+    let mut state = ACTIVE.write().unwrap();
+    if state.target.same_theme(&t) {
+        return;
+    }
+    // Snapshot the current interpolated colour so the next lerp picks up
+    // from wherever the animation already is.
+    state.current = state.get_interpolated();
+    state.target = t;
+    state.transition_start = Some(Instant::now());
+}
+
+/// End any transition now. Callers that repaint the whole screen use this so
+/// the blocks they rebuild are written in the final palette, not a blend of the
+/// way there.
+pub fn settle() {
+    let mut state = ACTIVE.write().unwrap();
+    state.current = state.target;
+    state.transition_start = None;
+}
+
+/// Returns a snapshot of the active theme. When a transition is in flight
+/// the returned theme is a blend of the source and target palettes.
+pub fn get() -> Theme {
+    ACTIVE
+        .read()
+        .map(|r| r.get_interpolated())
+        .unwrap_or(Theme::DEFAULT)
+}
+
+/// True while a theme transition is animating. Callers can use this to
+/// request extra frames until the transition settles.
+pub fn is_transitioning() -> bool {
+    ACTIVE
+        .read()
+        .map(|r| r.transition_start.is_some_and(|s| s.elapsed() < TRANSITION))
+        .unwrap_or(false)
+}
+
+/// One selectable theme: its name in `/theme`, a line for the picker, and the
+/// palette itself.
+#[derive(Clone)]
+pub struct ThemeEntry {
+    pub name: String,
+    pub description: String,
+    pub theme: Theme,
+}
+
+impl ThemeEntry {
+    pub fn builtin(name: &str, description: &str, theme: &Theme) -> Self {
+        Self {
+            name: name.to_string(),
+            description: description.to_string(),
+            theme: *theme,
+        }
+    }
+}
+
+/// The built-in themes, in picker order.
+pub fn all() -> &'static [ThemeEntry] {
+    static REGISTRY: OnceLock<Vec<ThemeEntry>> = OnceLock::new();
+    REGISTRY.get_or_init(|| {
+        vec![
+            ThemeEntry::builtin("default", "the default warm dark palette", &Theme::DEFAULT),
+            ThemeEntry::builtin("light", "for bright terminals", &Theme::LIGHT),
+            ThemeEntry::builtin("midnight", "deep blue dark palette", &Theme::MIDNIGHT),
+            ThemeEntry::builtin("forest", "muted green dark palette", &Theme::FOREST),
+            ThemeEntry::builtin(
+                "dracula",
+                "purple and pink on dark slate",
+                &palettes::DRACULA,
+            ),
+            ThemeEntry::builtin("catppuccin", "warm pastels on mauve", &palettes::CATPPUCCIN),
+            ThemeEntry::builtin("nord", "cool blues on slate", &palettes::NORD),
+            ThemeEntry::builtin("gruvbox", "earthy amber and orange", &palettes::GRUVBOX),
+            ThemeEntry::builtin("solarized", "muted teal and blue", &palettes::SOLARIZED),
+            ThemeEntry::builtin("synthwave", "neon pink to cyan", &palettes::SYNTHWAVE),
+            ThemeEntry::builtin(
+                "github-dark",
+                "GitHub's calm blue dark palette",
+                &palettes::GITHUB_DARK,
+            ),
+            ThemeEntry::builtin(
+                "monokai",
+                "classic Sublime/Monokai Pro palette",
+                &palettes::MONOKAI_PRO,
+            ),
+            ThemeEntry::builtin(
+                "one-dark",
+                "Atom One Dark blues and mint",
+                &palettes::ONE_DARK,
+            ),
+            ThemeEntry::builtin("ocean", "deep teal, cyan accent", &palettes::OCEAN),
+            ThemeEntry::builtin("ember", "warm charcoal, burning orange", &palettes::EMBER),
+            ThemeEntry::builtin("orchid", "violet dark, magenta accent", &palettes::ORCHID),
+        ]
+    })
+}
+
+pub fn named(name: &str) -> Option<&'static ThemeEntry> {
+    all().iter().find(|t| t.name == name)
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Theme {
+    pub text: Color,
+    pub dim: Color,
+    pub dimmer: Color,
+    pub faint: Color,
+    pub accent: Color,
+    pub error: Color,
+    pub rail_bg: Color,
+    pub pane_bg: Color,
+    pub sel_bg: Color,
+    pub amber: Color,
+    pub blue: Color,
+    pub purple: Color,
+    pub add_bg: Color,
+    pub add_fg: Color,
+    pub add_mark: Color,
+    pub del_bg: Color,
+    pub del_fg: Color,
+    pub del_mark: Color,
+    pub inline_code_bg: Color,
+    pub inline_code_fg: Color,
+    pub heading_fg: Color,
+    pub link_fg: Color,
+    pub placeholder: Color,
+    pub success: Color,
+    pub warning: Color,
+    pub severity_critical: Color,
+    pub severity_high: Color,
+    pub severity_medium: Color,
+    pub severity_low: Color,
+    pub severity_info: Color,
+    pub mark: [Color; 10],
+}
+
+impl Theme {
+    pub const DEFAULT: Theme = Theme {
+        text: Color::Rgb(0xff, 0xff, 0xff),
+        dim: Color::Rgb(0x8a, 0x8a, 0x85),
+        dimmer: Color::Rgb(0x5a, 0x5a, 0x5a),
+        faint: Color::Rgb(0x3f, 0x3f, 0x3f),
+        accent: Color::Rgb(242, 118, 79),
+        error: Color::Rgb(0xef, 0x5a, 0x6f),
+        rail_bg: Color::Rgb(0x19, 0x19, 0x19),
+        pane_bg: Color::Rgb(0x19, 0x19, 0x19),
+        sel_bg: Color::Rgb(0x2a, 0x1a, 0x10),
+        amber: Color::Rgb(0xf8, 0xcb, 0x66),
+        blue: Color::Rgb(0x6c, 0xb6, 0xe3),
+        purple: Color::Rgb(0xb4, 0x8c, 0xe3),
+        add_bg: Color::Rgb(0x12, 0x24, 0x0f),
+        add_fg: Color::Rgb(0x9e, 0xcb, 0x84),
+        add_mark: Color::Rgb(0x5f, 0x8f, 0x4a),
+        del_bg: Color::Rgb(0x2a, 0x15, 0x18),
+        del_fg: Color::Rgb(0xe0, 0x8b, 0x8b),
+        del_mark: Color::Rgb(0xa3, 0x4f, 0x4f),
+        inline_code_bg: Color::Rgb(0x20, 0x20, 0x20),
+        inline_code_fg: Color::Rgb(0xdd, 0xdd, 0xd8),
+        heading_fg: Color::Rgb(0xdd, 0xdd, 0xd8),
+        link_fg: Color::Rgb(0x6c, 0xb6, 0xe3),
+        placeholder: Color::Rgb(0x4d, 0x4d, 0x4d),
+        success: Color::Rgb(0x7e, 0xab, 0x6a),
+        warning: Color::Rgb(0xf8, 0xcb, 0x66),
+        severity_critical: Color::Rgb(0xef, 0x5a, 0x6f),
+        severity_high: Color::Rgb(0xe0, 0x6a, 0x6a),
+        severity_medium: Color::Rgb(0xf8, 0xcb, 0x66),
+        severity_low: Color::Rgb(0x6c, 0xb6, 0xe3),
+        severity_info: Color::Rgb(0x8a, 0x8a, 0x85),
+        mark: [
+            Color::Rgb(239, 90, 111),
+            Color::Rgb(239, 90, 111),
+            Color::Rgb(241, 110, 79),
+            Color::Rgb(243, 130, 79),
+            Color::Rgb(245, 152, 78),
+            Color::Rgb(246, 168, 84),
+            Color::Rgb(247, 182, 89),
+            Color::Rgb(247, 193, 95),
+            Color::Rgb(248, 203, 102),
+            Color::Rgb(248, 203, 102),
+        ],
+    };
+
+    pub const LIGHT: Theme = Theme {
+        text: Color::Rgb(0x1a, 0x1a, 0x1a),
+        dim: Color::Rgb(0x6a, 0x6a, 0x66),
+        dimmer: Color::Rgb(0x9a, 0x9a, 0x96),
+        faint: Color::Rgb(0xb8, 0xb4, 0xae),
+        accent: Color::Rgb(0xc2, 0x5a, 0x30),
+        error: Color::Rgb(0xc0, 0x3a, 0x50),
+        rail_bg: Color::Rgb(0xf5, 0xf2, 0xee),
+        pane_bg: Color::Rgb(0xf5, 0xf2, 0xee),
+        sel_bg: Color::Rgb(0xf0, 0xdf, 0xd2),
+        amber: Color::Rgb(0x9a, 0x6d, 0x14),
+        blue: Color::Rgb(0x2a, 0x6f, 0x9e),
+        purple: Color::Rgb(0x74, 0x4a, 0xb8),
+        add_bg: Color::Rgb(0xe2, 0xee, 0xda),
+        add_fg: Color::Rgb(0x3f, 0x6b, 0x2a),
+        add_mark: Color::Rgb(0x86, 0xa8, 0x72),
+        del_bg: Color::Rgb(0xf4, 0xdc, 0xdc),
+        del_fg: Color::Rgb(0xa3, 0x3a, 0x3a),
+        del_mark: Color::Rgb(0xc0, 0x84, 0x84),
+        inline_code_bg: Color::Rgb(0xe8, 0xe4, 0xde),
+        inline_code_fg: Color::Rgb(0x33, 0x30, 0x2c),
+        heading_fg: Color::Rgb(0x33, 0x30, 0x2c),
+        link_fg: Color::Rgb(0x2a, 0x6f, 0x9e),
+        placeholder: Color::Rgb(0xb0, 0xac, 0xa6),
+        success: Color::Rgb(0x4f, 0x7a, 0x3e),
+        warning: Color::Rgb(0x9a, 0x6d, 0x14),
+        severity_critical: Color::Rgb(0xc0, 0x3a, 0x50),
+        severity_high: Color::Rgb(0xb8, 0x4a, 0x4a),
+        severity_medium: Color::Rgb(0x9a, 0x6d, 0x14),
+        severity_low: Color::Rgb(0x2a, 0x6f, 0x9e),
+        severity_info: Color::Rgb(0x6a, 0x6a, 0x66),
+        mark: [
+            Color::Rgb(0xc2, 0x3a, 0x50),
+            Color::Rgb(0xc2, 0x3a, 0x50),
+            Color::Rgb(0xc2, 0x4a, 0x34),
+            Color::Rgb(0xc2, 0x5a, 0x30),
+            Color::Rgb(0xc2, 0x66, 0x30),
+            Color::Rgb(0xc0, 0x70, 0x36),
+            Color::Rgb(0xbc, 0x7a, 0x3c),
+            Color::Rgb(0xb8, 0x82, 0x42),
+            Color::Rgb(0xb4, 0x88, 0x48),
+            Color::Rgb(0xb4, 0x88, 0x48),
+        ],
+    };
+
+    /// Deep blue dark palette, in the family of terminal themes like midnight
+    /// in Tokyo. Same text ramp as DEFAULT so contrast stays equal.
+    pub const MIDNIGHT: Theme = Theme {
+        text: Color::Rgb(0xff, 0xff, 0xff),
+        dim: Color::Rgb(0x82, 0x8f, 0xa8),
+        dimmer: Color::Rgb(0x54, 0x5f, 0x78),
+        faint: Color::Rgb(0x3a, 0x44, 0x5c),
+        accent: Color::Rgb(0x7d, 0xc4, 0xff),
+        error: Color::Rgb(0xef, 0x5a, 0x6f),
+        rail_bg: Color::Rgb(0x0f, 0x14, 0x22),
+        pane_bg: Color::Rgb(0x0f, 0x14, 0x22),
+        sel_bg: Color::Rgb(0x1a, 0x2a, 0x4a),
+        amber: Color::Rgb(0xf8, 0xcb, 0x66),
+        blue: Color::Rgb(0x7d, 0xc4, 0xff),
+        purple: Color::Rgb(0xb4, 0x8c, 0xe3),
+        add_bg: Color::Rgb(0x12, 0x24, 0x0f),
+        add_fg: Color::Rgb(0x9e, 0xcb, 0x84),
+        add_mark: Color::Rgb(0x5f, 0x8f, 0x4a),
+        del_bg: Color::Rgb(0x2a, 0x15, 0x18),
+        del_fg: Color::Rgb(0xe0, 0x8b, 0x8b),
+        del_mark: Color::Rgb(0xa3, 0x4f, 0x4f),
+        inline_code_bg: Color::Rgb(0x1a, 0x22, 0x36),
+        inline_code_fg: Color::Rgb(0xdd, 0xdd, 0xd8),
+        heading_fg: Color::Rgb(0xdd, 0xdd, 0xd8),
+        link_fg: Color::Rgb(0x7d, 0xc4, 0xff),
+        placeholder: Color::Rgb(0x4d, 0x58, 0x70),
+        success: Color::Rgb(0x7e, 0xab, 0x6a),
+        warning: Color::Rgb(0xf8, 0xcb, 0x66),
+        severity_critical: Color::Rgb(0xef, 0x5a, 0x6f),
+        severity_high: Color::Rgb(0xe0, 0x6a, 0x6a),
+        severity_medium: Color::Rgb(0xf8, 0xcb, 0x66),
+        severity_low: Color::Rgb(0x7d, 0xc4, 0xff),
+        severity_info: Color::Rgb(0x82, 0x8f, 0xa8),
+        mark: [
+            Color::Rgb(0x7d, 0xc4, 0xff),
+            Color::Rgb(0x7d, 0xc4, 0xff),
+            Color::Rgb(0x7a, 0xc8, 0xff),
+            Color::Rgb(0x77, 0xcb, 0xff),
+            Color::Rgb(0x74, 0xcf, 0xff),
+            Color::Rgb(0x71, 0xd3, 0xff),
+            Color::Rgb(0x6e, 0xd7, 0xff),
+            Color::Rgb(0x6b, 0xdb, 0xff),
+            Color::Rgb(0x68, 0xdf, 0xff),
+            Color::Rgb(0x68, 0xdf, 0xff),
+        ],
+    };
+
+    /// Muted green dark palette, in the family of gruvbox / everforest.
+    pub const FOREST: Theme = Theme {
+        text: Color::Rgb(0xff, 0xff, 0xff),
+        dim: Color::Rgb(0x9a, 0xa0, 0x8a),
+        dimmer: Color::Rgb(0x66, 0x6e, 0x5c),
+        faint: Color::Rgb(0x44, 0x4a, 0x3c),
+        accent: Color::Rgb(0xa7, 0xc0, 0x80),
+        error: Color::Rgb(0xef, 0x5a, 0x6f),
+        rail_bg: Color::Rgb(0x17, 0x1c, 0x16),
+        pane_bg: Color::Rgb(0x17, 0x1c, 0x16),
+        sel_bg: Color::Rgb(0x2a, 0x33, 0x22),
+        amber: Color::Rgb(0xdb, 0xbc, 0x6f),
+        blue: Color::Rgb(0x7f, 0xbb, 0xb3),
+        purple: Color::Rgb(0xd6, 0x99, 0xb6),
+        add_bg: Color::Rgb(0x12, 0x24, 0x0f),
+        add_fg: Color::Rgb(0x9e, 0xcb, 0x84),
+        add_mark: Color::Rgb(0x5f, 0x8f, 0x4a),
+        del_bg: Color::Rgb(0x2a, 0x15, 0x18),
+        del_fg: Color::Rgb(0xe0, 0x8b, 0x8b),
+        del_mark: Color::Rgb(0xa3, 0x4f, 0x4f),
+        inline_code_bg: Color::Rgb(0x22, 0x28, 0x1e),
+        inline_code_fg: Color::Rgb(0xdd, 0xdd, 0xd8),
+        heading_fg: Color::Rgb(0xdd, 0xdd, 0xd8),
+        link_fg: Color::Rgb(0x7f, 0xbb, 0xb3),
+        placeholder: Color::Rgb(0x55, 0x5d, 0x4d),
+        success: Color::Rgb(0xa7, 0xc0, 0x80),
+        warning: Color::Rgb(0xdb, 0xbc, 0x6f),
+        severity_critical: Color::Rgb(0xef, 0x5a, 0x6f),
+        severity_high: Color::Rgb(0xe0, 0x6a, 0x6a),
+        severity_medium: Color::Rgb(0xdb, 0xbc, 0x6f),
+        severity_low: Color::Rgb(0x7f, 0xbb, 0xb3),
+        severity_info: Color::Rgb(0x9a, 0xa0, 0x8a),
+        mark: [
+            Color::Rgb(0xa7, 0xc0, 0x80),
+            Color::Rgb(0xa7, 0xc0, 0x80),
+            Color::Rgb(0xab, 0xc4, 0x86),
+            Color::Rgb(0xaf, 0xc8, 0x8c),
+            Color::Rgb(0xb3, 0xcc, 0x92),
+            Color::Rgb(0xb7, 0xd0, 0x98),
+            Color::Rgb(0xbb, 0xd4, 0x9e),
+            Color::Rgb(0xbf, 0xd8, 0xa4),
+            Color::Rgb(0xc3, 0xdc, 0xaa),
+            Color::Rgb(0xc3, 0xdc, 0xaa),
+        ],
+    };
+
+    pub fn text_style(&self) -> Style {
+        Style::default().fg(self.text)
+    }
+
+    pub fn dim_style(&self) -> Style {
+        Style::default().fg(self.dim)
+    }
+
+    pub fn dimmer_style(&self) -> Style {
+        Style::default().fg(self.dimmer)
+    }
+
+    pub fn faint_style(&self) -> Style {
+        Style::default().fg(self.faint)
+    }
+
+    pub fn accent_style(&self) -> Style {
+        Style::default().fg(self.accent)
+    }
+
+    pub fn accent_bold(&self) -> Style {
+        Style::default()
+            .fg(self.accent)
+            .add_modifier(Modifier::BOLD)
+    }
+
+    pub fn error_style(&self) -> Style {
+        Style::default().fg(self.error)
+    }
+
+    pub fn amber_style(&self) -> Style {
+        Style::default().fg(self.amber)
+    }
+
+    pub fn blue_style(&self) -> Style {
+        Style::default().fg(self.blue)
+    }
+
+    pub fn selected_style(&self) -> Style {
+        Style::default().fg(self.accent).bg(self.sel_bg)
+    }
+
+    pub fn pane_bg_style(&self) -> Style {
+        Style::default().bg(self.pane_bg)
+    }
+
+    pub fn rail_bg_style(&self) -> Style {
+        Style::default().bg(self.rail_bg)
+    }
+
+    pub fn code_style(&self) -> Style {
+        Style::default()
+            .fg(self.inline_code_fg)
+            .bg(self.inline_code_bg)
+    }
+
+    pub fn bold_style(&self) -> Style {
+        Style::default().add_modifier(Modifier::BOLD)
+    }
+
+    pub fn dark_gray_style(&self) -> Style {
+        Style::default().fg(self.faint)
+    }
+
+    pub fn add_row_style(&self) -> Style {
+        Style::default().fg(self.add_fg).bg(self.add_bg)
+    }
+
+    pub fn del_row_style(&self) -> Style {
+        Style::default().fg(self.del_fg).bg(self.del_bg)
+    }
+
+    fn same_theme(&self, other: &Theme) -> bool {
+        self.text == other.text
+            && self.dim == other.dim
+            && self.dimmer == other.dimmer
+            && self.faint == other.faint
+            && self.accent == other.accent
+    }
+
+    fn lerp_color(a: Color, b: Color, t: f32) -> Color {
+        match (a, b) {
+            (Color::Rgb(ar, ag, ab), Color::Rgb(br, bg, bb)) => Color::Rgb(
+                ((ar as f32) + ((br as f32) - (ar as f32)) * t).round() as u8,
+                ((ag as f32) + ((bg as f32) - (ag as f32)) * t).round() as u8,
+                ((ab as f32) + ((bb as f32) - (ab as f32)) * t).round() as u8,
+            ),
+            _ => {
+                if t < 0.5 {
+                    a
+                } else {
+                    b
+                }
+            }
+        }
+    }
+
+    fn lerp(&self, target: &Theme, t: f32) -> Theme {
+        Theme {
+            text: Self::lerp_color(self.text, target.text, t),
+            dim: Self::lerp_color(self.dim, target.dim, t),
+            dimmer: Self::lerp_color(self.dimmer, target.dimmer, t),
+            faint: Self::lerp_color(self.faint, target.faint, t),
+            accent: Self::lerp_color(self.accent, target.accent, t),
+            error: Self::lerp_color(self.error, target.error, t),
+            rail_bg: Self::lerp_color(self.rail_bg, target.rail_bg, t),
+            pane_bg: Self::lerp_color(self.pane_bg, target.pane_bg, t),
+            sel_bg: Self::lerp_color(self.sel_bg, target.sel_bg, t),
+            amber: Self::lerp_color(self.amber, target.amber, t),
+            blue: Self::lerp_color(self.blue, target.blue, t),
+            purple: Self::lerp_color(self.purple, target.purple, t),
+            add_bg: Self::lerp_color(self.add_bg, target.add_bg, t),
+            add_fg: Self::lerp_color(self.add_fg, target.add_fg, t),
+            add_mark: Self::lerp_color(self.add_mark, target.add_mark, t),
+            del_bg: Self::lerp_color(self.del_bg, target.del_bg, t),
+            del_fg: Self::lerp_color(self.del_fg, target.del_fg, t),
+            del_mark: Self::lerp_color(self.del_mark, target.del_mark, t),
+            inline_code_bg: Self::lerp_color(self.inline_code_bg, target.inline_code_bg, t),
+            inline_code_fg: Self::lerp_color(self.inline_code_fg, target.inline_code_fg, t),
+            heading_fg: Self::lerp_color(self.heading_fg, target.heading_fg, t),
+            link_fg: Self::lerp_color(self.link_fg, target.link_fg, t),
+            placeholder: Self::lerp_color(self.placeholder, target.placeholder, t),
+            success: Self::lerp_color(self.success, target.success, t),
+            warning: Self::lerp_color(self.warning, target.warning, t),
+            severity_critical: Self::lerp_color(
+                self.severity_critical,
+                target.severity_critical,
+                t,
+            ),
+            severity_high: Self::lerp_color(self.severity_high, target.severity_high, t),
+            severity_medium: Self::lerp_color(self.severity_medium, target.severity_medium, t),
+            severity_low: Self::lerp_color(self.severity_low, target.severity_low, t),
+            severity_info: Self::lerp_color(self.severity_info, target.severity_info, t),
+            mark: [
+                Self::lerp_color(self.mark[0], target.mark[0], t),
+                Self::lerp_color(self.mark[1], target.mark[1], t),
+                Self::lerp_color(self.mark[2], target.mark[2], t),
+                Self::lerp_color(self.mark[3], target.mark[3], t),
+                Self::lerp_color(self.mark[4], target.mark[4], t),
+                Self::lerp_color(self.mark[5], target.mark[5], t),
+                Self::lerp_color(self.mark[6], target.mark[6], t),
+                Self::lerp_color(self.mark[7], target.mark[7], t),
+                Self::lerp_color(self.mark[8], target.mark[8], t),
+                Self::lerp_color(self.mark[9], target.mark[9], t),
+            ],
+        }
+    }
+}

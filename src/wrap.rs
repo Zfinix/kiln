@@ -1,0 +1,103 @@
+//! Unicode-aware wrapping. Everything the chat TUI puts on screen goes through
+//! here, so the composer's cursor math and the transcript's line count agree
+//! with what the terminal actually draws (CJK and emoji are two columns wide).
+
+use std::ops::Range;
+
+use ratatui::text::{Line, Span};
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+
+pub fn width(text: &str) -> usize {
+    UnicodeWidthStr::width(text)
+}
+
+/// Split `text` into display rows of at most `max` columns, as byte ranges that
+/// tile the input. Breaks after spaces; a word wider than a row is cut. The
+/// ranges tile so a byte offset (a cursor) maps to exactly one row.
+pub fn rows(text: &str, max: usize) -> Vec<Range<usize>> {
+    let max = max.max(1);
+    let mut out = Vec::new();
+    let mut start = 0;
+    let mut col = 0;
+    let mut pos = 0;
+    for chunk in text.split_inclusive(' ') {
+        let chunk_start = pos;
+        pos += chunk.len();
+        let word = chunk.trim_end_matches(' ');
+        let word_w = width(word);
+        if col > 0 && col + word_w > max {
+            out.push(start..chunk_start);
+            start = chunk_start;
+            col = 0;
+        }
+        if word_w > max {
+            let mut w = 0;
+            for (off, ch) in word.char_indices() {
+                let cw = UnicodeWidthChar::width(ch).unwrap_or(0);
+                if w + cw > max && chunk_start + off > start {
+                    out.push(start..chunk_start + off);
+                    start = chunk_start + off;
+                    w = 0;
+                }
+                w += cw;
+            }
+            col = w + (chunk.len() - word.len());
+        } else {
+            col += width(chunk);
+        }
+    }
+    out.push(start..text.len());
+    out
+}
+
+/// `text` as display rows, trailing spaces dropped.
+pub fn lines(text: &str, max: usize) -> Vec<String> {
+    rows(text, max)
+        .into_iter()
+        .map(|r| text[r].trim_end().to_string())
+        .collect()
+}
+
+/// Re-flow a styled line to `max` columns, carrying each span's style across
+/// the break.
+pub fn wrap_line(line: Line<'static>, max: usize) -> Vec<Line<'static>> {
+    let mut text = String::new();
+    let mut runs = Vec::with_capacity(line.spans.len());
+    for span in &line.spans {
+        let start = text.len();
+        text.push_str(&span.content);
+        runs.push((start..text.len(), span.style));
+    }
+
+    let ranges = rows(&text, max);
+    if ranges.len() <= 1 {
+        return vec![line];
+    }
+    ranges
+        .into_iter()
+        .map(|row| {
+            let spans: Vec<Span<'static>> = runs
+                .iter()
+                .filter_map(|(run, style)| {
+                    let from = run.start.max(row.start);
+                    let to = run.end.min(row.end);
+                    (from < to).then(|| Span::styled(text[from..to].to_string(), *style))
+                })
+                .collect();
+            Line::from(spans).style(line.style)
+        })
+        .collect()
+}
+
+/// Pad `line` with spaces so its background colour reaches the full width.
+pub fn pad_to(mut line: Line<'static>, max: usize, style: ratatui::style::Style) -> Line<'static> {
+    let used = line.spans.iter().map(|s| width(&s.content)).sum::<usize>();
+    if used < max {
+        line.spans.push(Span::styled(" ".repeat(max - used), style));
+    }
+    line
+}
+
+#[cfg(test)]
+#[path = "tests/wrap_test.rs"]
+mod tests;
