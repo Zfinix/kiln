@@ -196,6 +196,19 @@ tell it where the terminal's reflow left the end of the transcript, so the pane
 goes back directly under it with no blank bands or clipped rows. The tests in
 `src/tests/term_test.rs` check this against a simulated terminal.
 
+## Inspired by
+
+- [Codex CLI](https://github.com/openai/codex/tree/main/codex-rs/tui). Its
+  TUI is where the shape comes from: an inline viewport that writes finished
+  output into real scrollback, a bottom pane with stacked views, and a list
+  selection view.
+- [Charm](https://charm.sh). `pick` is modelled on
+  [gum choose](https://github.com/charmbracelet/gum), and the overall polish
+  aims for what [Bubble Tea](https://github.com/charmbracelet/bubbletea) apps
+  get right.
+- [ratatui](https://ratatui.rs), which kiln is built on. The viewport in
+  `src/term.rs` started from its `Terminal`.
+
 ## Contributing
 
 Bug reports and pull requests are welcome. Before opening a PR, run:
