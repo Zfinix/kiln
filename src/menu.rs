@@ -1,6 +1,10 @@
 //! The slash-command list that opens above the composer as soon as the line
 //! starts with `/`, filtered by prefix as the user types.
 
+use ratatui::text::{Line, Span};
+
+use crate::{text, theme};
+
 pub const ROWS: usize = 6;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,6 +107,40 @@ impl Menu {
             })
             .collect();
         (rows, self.matches.len() - end)
+    }
+
+    /// The open window as styled rows: `/name` and the first sentence of its
+    /// description, clipped to `width` columns, then a count of hidden matches.
+    pub fn lines(&self, width: usize) -> Vec<Line<'static>> {
+        let t = theme::get();
+        let (rows, hidden) = self.window();
+        let name_w = rows.iter().map(|(c, _)| c.name.len()).max().unwrap_or(0) + 1;
+        let mut out: Vec<Line<'static>> = rows
+            .into_iter()
+            .map(|(command, selected)| {
+                let style = match selected {
+                    true => t.selected_style(),
+                    false => t.dim_style(),
+                };
+                let summary = command
+                    .description
+                    .split(['.', '\n'])
+                    .next()
+                    .unwrap_or_default();
+                let room = width.saturating_sub(name_w + 2);
+                Line::from(vec![
+                    Span::styled(format!("/{:<name_w$}", command.name), style),
+                    Span::styled(
+                        format!(" {}", text::clip_row(summary, room)),
+                        t.dimmer_style(),
+                    ),
+                ])
+            })
+            .collect();
+        if hidden > 0 {
+            out.push(Line::styled(format!("+{hidden} more"), t.faint_style()));
+        }
+        out
     }
 
     pub fn height(&self) -> u16 {

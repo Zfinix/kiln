@@ -4,6 +4,11 @@
 
 use std::collections::VecDeque;
 
+use ratatui::style::Style;
+use ratatui::text::{Line, Span};
+
+use crate::theme;
+
 pub const MAX_PREVIEW_ROWS: usize = 10;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -127,6 +132,54 @@ impl<T> Approvals<T> {
             .cloned()
             .collect();
         (shown, hidden)
+    }
+
+    /// The prompt as styled rows: title, preview, choices and a key hint.
+    /// Empty when nothing is waiting.
+    pub fn lines(&self) -> Vec<Line<'static>> {
+        let Some(request) = &self.current else {
+            return Vec::new();
+        };
+        let t = theme::get();
+        let mut head = vec![
+            Span::styled("? ", t.accent_bold()),
+            Span::styled(request.title.clone(), t.text_style()),
+        ];
+        if !self.queue.is_empty() {
+            head.push(Span::styled(
+                format!("   +{} waiting", self.queue.len()),
+                t.dimmer_style(),
+            ));
+        }
+        let mut lines = vec![Line::from(head)];
+        let (preview, hidden) = self.preview();
+        lines.extend(preview.into_iter().map(|row| {
+            let style = match row.chars().next() {
+                Some('+') => Style::default().fg(t.add_fg),
+                Some('-') => Style::default().fg(t.del_fg),
+                _ => t.dim_style(),
+            };
+            Line::styled(format!("  {row}"), style)
+        }));
+        if hidden > 0 {
+            lines.push(Line::styled(format!("  … {hidden} more"), t.dimmer_style()));
+        }
+        for (i, choice) in request.choices.iter().enumerate() {
+            let (mark, style) = match (i == self.selected, choice.kind.allows()) {
+                (true, true) => ("› ", t.accent_bold()),
+                (true, false) => ("› ", t.error_style()),
+                (false, _) => ("  ", t.dimmer_style()),
+            };
+            lines.push(Line::from(vec![
+                Span::styled(mark, style),
+                Span::styled(choice.label.clone(), style),
+            ]));
+        }
+        lines.push(Line::styled(
+            "↑↓ choose   enter confirm   esc deny",
+            t.faint_style(),
+        ));
+        lines
     }
 
     /// Rows the prompt needs: title, preview, hidden note, choices and hint.

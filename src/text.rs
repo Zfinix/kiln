@@ -3,6 +3,9 @@
 
 use std::path::Path;
 
+use ratatui::style::{Color, Modifier};
+use ratatui::text::Line;
+
 use crate::wrap;
 
 pub const LIST_MAX: usize = 8;
@@ -80,6 +83,62 @@ pub fn clip_row(text: &str, max: usize) -> String {
         .map(|r| flat[r.clone()].to_string())
         .unwrap_or_default();
     format!("{}…", head.trim_end())
+}
+
+/// `lines` as ANSI escapes, one row per line, for output that bypasses a
+/// viewport: a plain `print!` still gets the theme's colours and weights.
+pub fn to_ansi(lines: &[Line<'_>]) -> String {
+    let mut out = String::new();
+    for line in lines {
+        for span in &line.spans {
+            let style = line.style.patch(span.style);
+            let mut codes = Vec::new();
+            for (flag, code) in [
+                (Modifier::BOLD, "1"),
+                (Modifier::DIM, "2"),
+                (Modifier::ITALIC, "3"),
+                (Modifier::UNDERLINED, "4"),
+                (Modifier::CROSSED_OUT, "9"),
+            ] {
+                if style.add_modifier.contains(flag) {
+                    codes.push(code.to_string());
+                }
+            }
+            codes.extend(style.fg.and_then(|c| sgr(c, 38)));
+            codes.extend(style.bg.and_then(|c| sgr(c, 48)));
+            match codes.is_empty() {
+                true => out.push_str(&span.content),
+                false => out.push_str(&format!("\x1b[{}m{}\x1b[0m", codes.join(";"), span.content)),
+            }
+        }
+        out.push('\n');
+    }
+    out
+}
+
+fn sgr(color: Color, base: u8) -> Option<String> {
+    let named = |n: u8| Some(format!("{}", base - 8 + n));
+    match color {
+        Color::Reset => None,
+        Color::Rgb(r, g, b) => Some(format!("{base};2;{r};{g};{b}")),
+        Color::Indexed(i) => Some(format!("{base};5;{i}")),
+        Color::Black => named(0),
+        Color::Red => named(1),
+        Color::Green => named(2),
+        Color::Yellow => named(3),
+        Color::Blue => named(4),
+        Color::Magenta => named(5),
+        Color::Cyan => named(6),
+        Color::Gray => named(7),
+        Color::DarkGray => Some(format!("{base};5;8")),
+        Color::LightRed => Some(format!("{base};5;9")),
+        Color::LightGreen => Some(format!("{base};5;10")),
+        Color::LightYellow => Some(format!("{base};5;11")),
+        Color::LightBlue => Some(format!("{base};5;12")),
+        Color::LightMagenta => Some(format!("{base};5;13")),
+        Color::LightCyan => Some(format!("{base};5;14")),
+        Color::White => Some(format!("{base};5;15")),
+    }
 }
 
 #[cfg(test)]

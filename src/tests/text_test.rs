@@ -43,3 +43,21 @@ fn a_long_list_is_capped_and_its_tail_split_off() {
         ("n0, n1, n2, n3, n4, n5, n6, n7", Some("… +2 more"))
     );
 }
+
+#[test]
+fn ansi_output_carries_weight_and_colour_and_resets_after_each_span() {
+    use ratatui::style::{Color, Style};
+    use ratatui::text::Span;
+    let line = Line::from(vec![
+        Span::raw("plain "),
+        Span::styled("bold", Style::default().bold().fg(Color::Rgb(1, 2, 3))),
+        Span::styled(
+            " dim",
+            Style::default().fg(Color::Red).bg(Color::Indexed(236)),
+        ),
+    ]);
+    assert_eq!(
+        to_ansi(&[line]),
+        "plain \x1b[1;38;2;1;2;3mbold\x1b[0m\x1b[31;48;5;236m dim\x1b[0m\n"
+    );
+}

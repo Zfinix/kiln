@@ -42,6 +42,18 @@ impl Renderable for Paragraph<'static> {
     }
 }
 
+impl<R: Renderable + ?Sized> Renderable for &R {
+    fn render(&self, area: Rect, buf: &mut Buffer) {
+        (**self).render(area, buf);
+    }
+    fn desired_height(&self, width: u16) -> u16 {
+        (**self).desired_height(width)
+    }
+    fn cursor_pos(&self, area: Rect) -> Option<(u16, u16)> {
+        (**self).cursor_pos(area)
+    }
+}
+
 impl<R: Renderable> Renderable for Option<R> {
     fn render(&self, area: Rect, buf: &mut Buffer) {
         if let Some(r) = self {

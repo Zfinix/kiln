@@ -1,7 +1,7 @@
 //! Logos drawn in half blocks, so ten rows of pixels fit in five rows of text,
 //! each pixel row tinted from the theme's `mark` gradient.
 
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 
 use crate::theme;
@@ -51,23 +51,4 @@ pub fn lines(bitmap: &Bitmap, indent: usize) -> Vec<Line<'static>> {
             Line::from(spans)
         })
         .collect()
-}
-
-/// The same lines as raw ANSI escapes, for output that bypasses ratatui.
-pub fn ansi(lines: &[Line<'static>]) -> String {
-    let mut out = String::new();
-    for line in lines {
-        for span in &line.spans {
-            if let Some(Color::Rgb(r, g, b)) = span.style.fg {
-                out.push_str(&format!("\x1b[38;2;{r};{g};{b}m"));
-            }
-            if let Some(Color::Rgb(r, g, b)) = span.style.bg {
-                out.push_str(&format!("\x1b[48;2;{r};{g};{b}m"));
-            }
-            out.push_str(&span.content);
-            out.push_str("\x1b[0m");
-        }
-        out.push('\n');
-    }
-    out
 }

@@ -7,7 +7,6 @@ use std::time::Duration;
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::Position;
-use ratatui::text::{Line, Span};
 use tokio::sync::mpsc;
 
 use kiln::cells::{self, StepStatus};
@@ -59,66 +58,18 @@ impl App {
     fn pane(&self, width: u16) -> (Column<'_>, Option<(u16, u16)>) {
         let mut column = Column::new();
         if let Some(status) = &self.status {
-            column.push(Inset::new(StatusRef(status), Insets::tlbr(1, 2, 0, 0)));
+            column.push(Inset::new(status, Insets::tlbr(1, 2, 0, 0)));
         }
         if let Some(view) = &self.view {
-            column.push(Inset::new(ViewRef(view.as_ref()), Insets::tlbr(1, 2, 0, 2)));
+            column.push(Inset::new(view.as_ref(), Insets::tlbr(1, 2, 0, 2)));
             return (column, None);
         }
         let (lines, (row, col)) = self.composer.render(width, "Ask anything, / for commands");
-        let menu = self.menu_lines();
+        let menu = self.menu.lines(width.saturating_sub(2) as usize);
         let top = 1 + self.status.as_ref().map_or(0, |_| 2);
         column.push(Inset::new(lines, Insets::tlbr(1, 0, 0, 0)));
         column.push(Inset::new(menu, Insets::tlbr(0, 2, 0, 0)));
         (column, Some((row + top, col)))
-    }
-
-    fn menu_lines(&self) -> Vec<Line<'static>> {
-        let t = theme::get();
-        let (rows, hidden) = self.menu.window();
-        let mut out: Vec<Line<'static>> = rows
-            .into_iter()
-            .map(|(command, selected)| {
-                let style = if selected {
-                    t.selected_style()
-                } else {
-                    t.dim_style()
-                };
-                Line::from(vec![
-                    Span::styled(format!("/{:<8}", command.name), style),
-                    Span::styled(format!("  {}", command.description), t.dimmer_style()),
-                ])
-            })
-            .collect();
-        if hidden > 0 {
-            out.push(Line::from(Span::styled(
-                format!("+{hidden} more"),
-                t.faint_style(),
-            )));
-        }
-        out
-    }
-}
-
-struct StatusRef<'a>(&'a StatusWidget);
-
-impl Renderable for StatusRef<'_> {
-    fn render(&self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {
-        self.0.render(area, buf);
-    }
-    fn desired_height(&self, width: u16) -> u16 {
-        self.0.desired_height(width)
-    }
-}
-
-struct ViewRef<'a>(&'a dyn View);
-
-impl Renderable for ViewRef<'_> {
-    fn render(&self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {
-        self.0.render(area, buf);
-    }
-    fn desired_height(&self, width: u16) -> u16 {
-        self.0.desired_height(width)
     }
 }
 

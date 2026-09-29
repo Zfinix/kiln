@@ -108,27 +108,63 @@ after the program exits.
 | `syntax` | a small highlighter for code blocks in any language |
 | `cells` | transcript blocks: `user`, `assistant`, `notice`, `error`, `error_box`, `tool`, `plan`, `patch`, `header`, and more |
 | `list` | `ListSelectionView`, a filterable picker with an optional hover hook |
-| `menu` | `Menu`, the slash-command list |
-| `approval` | `Approvals`, a queue of allow/deny requests |
+| `menu` | `Menu`, the slash-command list, drawn with `Menu::lines` |
+| `approval` | `Approvals`, a queue of allow/deny requests, drawn with `Approvals::lines` |
 | `status` | `StatusWidget`, a spinner with an activity label and elapsed time |
 | `render` | `Renderable`, `Column`, `Inset`, `Insets` |
 | `view` | `View`, the trait for modal panes that take the keyboard |
 | `theme`, `palettes` | the active theme, the built-in palettes, and animated switching |
 | `mark` | half-block logos tinted with the theme gradient |
-| `wrap`, `text` | Unicode-aware wrapping and clipping, plus count and duration formatting |
+| `wrap`, `text` | Unicode-aware wrapping and clipping, count and duration formatting, and `to_ansi` to print cells without a viewport |
 
 ## Examples
 
-```sh
-cargo run --example demo
-```
+Every example runs offline except `chat`. Run one with `cargo run --example <name>`.
 
-A scripted tour that needs no network. Type a message to watch a reply stream
-in, then try `/theme`, `/plan`, and `/diff`.
+### demo
 
-```sh
-cargo run --example chat
-```
+A scripted tour: type a message and a reply streams in, then try `/theme`,
+`/plan`, and `/diff`. It is the screenshot at the top of this page.
+
+### pick
+
+A one-question picker, like `gum choose`. Pass options as arguments, type to
+filter, press a number or enter. The pane clears and the answer is printed on
+its own line: `cargo run --example pick -- rust go zig`.
+
+![A picker filtered to three crates with the second one selected](assets/pick.png)
+
+### tasks
+
+A task runner. The plan and a spinner stay live in the pane while steps run.
+Finished steps and their output go into scrollback, and a failed step ends in
+an error box.
+
+![A task list with two steps done, one in progress and a spinner below it](assets/tasks.png)
+
+### approve
+
+Permission prompts. Requests that arrive while one is open wait in a queue,
+and the one-time allow is always preselected.
+
+![A permission prompt for a file edit with a tinted diff preview and one more request waiting](assets/approve.png)
+
+### markdown
+
+Streams a markdown file into scrollback a few words at a time, the way a model
+reply arrives. This one has no async runtime; it drives `InlineTerm` directly.
+Pass a path to render your own file: `cargo run --example markdown -- README.md`.
+
+![Rendered markdown with a heading, a list with code spans, a table, a quote and a highlighted code block](assets/markdown.png)
+
+### themes
+
+All 16 built-in themes, printed with `text::to_ansi`. It uses no raw mode and
+no viewport, which is all a one-shot CLI needs.
+
+![Sixteen theme swatches in two columns, each with a tinted star, colour chips and diff and code samples](assets/themes.png)
+
+### chat
 
 A full chat client for any agent that speaks the
 [Agent Client Protocol](https://agentclientprotocol.com). It starts `aster acp`
