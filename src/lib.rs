@@ -5,15 +5,21 @@
 #![doc = include_str!("../README.md")]
 
 pub mod approval;
+pub mod bigtext;
 pub mod cells;
 pub mod composer;
+pub mod confirm;
 pub mod guard;
+pub mod input;
+pub mod keys;
 pub mod list;
 pub mod mark;
 pub mod markdown;
 pub mod menu;
 pub mod palettes;
+pub mod progress;
 pub mod render;
+pub mod spark;
 pub mod status;
 pub mod syntax;
 pub mod term;
