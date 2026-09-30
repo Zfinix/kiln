@@ -43,7 +43,7 @@ kiln is not on crates.io yet. Add it from Git:
 
 ```toml
 [dependencies]
-kiln = { git = "https://github.com/Zfinix/kiln" }
+kiln = { git = "https://github.com/Zfinix/kiln", tag = "v0.2.0" }
 ```
 
 kiln needs Rust 1.88 or newer (edition 2024). `Tui` runs on
@@ -115,6 +115,12 @@ after the program exits.
 | `view` | `View`, the trait for modal panes that take the keyboard |
 | `theme`, `palettes` | the active theme, the built-in palettes, and animated switching |
 | `mark` | half-block logos tinted with the theme gradient |
+| `bigtext` | three-row block digits for timers and readouts |
+| `spark` | a one-row history chart |
+| `progress` | a bar filled with the theme's gradient, to an eighth of a cell |
+| `keys` | the `q quit · ? help` footer and the full help list |
+| `confirm` | a yes/no question, like `gum confirm`, that starts on the safe answer |
+| `input` | a one-line field with a character limit and counter, like `gum input` |
 | `wrap`, `text` | Unicode-aware wrapping and clipping, count and duration formatting, and `to_ansi` to print cells without a viewport |
 
 ## Examples
@@ -195,6 +201,14 @@ region and records how wide each row was printed. After a resize, those widths
 tell it where the terminal's reflow left the end of the transcript, so the pane
 goes back directly under it with no blank bands or clipped rows. The tests in
 `src/tests/term_test.rs` check this against a simulated terminal.
+
+## Built with kiln
+
+- [tock](https://github.com/Zfinix/tock): a pomodoro timer in your terminal
+- [pulse](https://github.com/Zfinix/pulse): internet speed in your terminal
+- [ship](https://github.com/Zfinix/ship): conventional commits in your terminal
+
+All of them live together in [kiln-tools](https://github.com/Zfinix/kiln-tools).
 
 ## Inspired by
 
