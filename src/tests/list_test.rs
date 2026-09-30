@@ -167,3 +167,22 @@ fn out_of_range_digit_does_nothing() {
     assert!(!v.is_complete());
     assert!(rx.try_recv().is_err());
 }
+
+#[test]
+fn lines_numbers_share_one_width_past_nine_items() {
+    let mut view = long_view(12);
+    for _ in 0..11 {
+        view.handle_key(key(KeyCode::Down));
+    }
+    let rows: Vec<String> = view
+        .lines()
+        .iter()
+        .map(ToString::to_string)
+        .filter(|row| row.contains("session-"))
+        .collect();
+    let name_cols: Vec<usize> = rows
+        .iter()
+        .map(|row| crate::wrap::width(&row[..row.find("session-").unwrap()]))
+        .collect();
+    assert!(name_cols.windows(2).all(|w| w[0] == w[1]), "{name_cols:?}");
+}

@@ -149,6 +149,7 @@ impl<E: Clone> ListSelectionView<E> {
         let start = window_start(sel, filtered.len(), VISIBLE_ROWS);
         let shown = filtered.iter().enumerate().skip(start).take(VISIBLE_ROWS);
         let name_w = shown.clone().map(|(_, i)| i.name.len()).max().unwrap_or(0);
+        let num_w = filtered.len().min(start + VISIBLE_ROWS).to_string().len();
         for (i, item) in shown {
             let active = i == sel;
             let style = if active {
@@ -159,7 +160,7 @@ impl<E: Clone> ListSelectionView<E> {
             let current = if item.is_current { " (current)" } else { "" };
             out.push(Line::from(vec![
                 Span::styled(if active { "▸ " } else { "  " }, style),
-                Span::styled(format!("{}. ", i + 1), style),
+                Span::styled(format!("{:>num_w$}. ", i + 1), style),
                 Span::styled(format!("{:<name_w$}{current}", item.name), style),
                 Span::styled(format!("  {}", item.description), theme::get().text_style()),
             ]));
