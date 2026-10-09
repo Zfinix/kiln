@@ -43,7 +43,7 @@ kiln is not on crates.io yet. Add it from Git:
 
 ```toml
 [dependencies]
-kiln = { git = "https://github.com/Zfinix/kiln", tag = "v0.2.0" }
+kiln = { git = "https://github.com/Zfinix/kiln", tag = "v0.3.0" }
 ```
 
 kiln needs Rust 1.88 or newer (edition 2024). `Tui` runs on
