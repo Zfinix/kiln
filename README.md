@@ -118,6 +118,7 @@ after the program exits.
 | `bigtext` | three-row block digits for timers and readouts |
 | `spark` | a one-row history chart |
 | `progress` | a bar filled with the theme's gradient, to an eighth of a cell |
+| `install` | `uv`-style install output: a spinner with a count, a bar per download, then `Installed 3 packages in 174ms` and ` + name==version` lines |
 | `keys` | the `q quit · ? help` footer and the full help list |
 | `confirm` | a yes/no question, like `gum confirm`, that starts on the safe answer |
 | `input` | a one-line field with a character limit and counter, like `gum input` |
@@ -170,6 +171,13 @@ All 16 built-in themes, printed with `text::to_ansi`. It uses no raw mode and
 no viewport, which is all a one-shot CLI needs.
 
 ![Sixteen theme swatches in two columns, each with a tinted star, colour chips and diff and code samples](https://raw.githubusercontent.com/Zfinix/kiln/main/assets/themes.png)
+
+### install
+
+A pretend package install drawn the way `uv tool install` draws one: a
+spinner while resolving, a thin bar per download, then a summary and the
+` + name==version` list. It prints to stderr with no raw mode, and falls back
+to plain lines when stderr is piped.
 
 ### chat
 

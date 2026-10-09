@@ -11,6 +11,7 @@ pub mod composer;
 pub mod confirm;
 pub mod guard;
 pub mod input;
+pub mod install;
 pub mod keys;
 pub mod list;
 pub mod mark;

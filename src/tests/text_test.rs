@@ -87,3 +87,9 @@ fn ansi_round_trips_through_to_ansi() {
     let line = Line::from(from_ansi(row, Style::default()));
     assert_eq!(to_ansi(&[line]), format!("{row}\n"));
 }
+
+#[test]
+fn bytes_use_binary_units() {
+    let said: Vec<String> = [512, 3_277, 26_592_000, 5 << 30].map(bytes).into();
+    assert_eq!(said, ["512 B", "3.20 KiB", "25.36 MiB", "5.00 GiB"]);
+}

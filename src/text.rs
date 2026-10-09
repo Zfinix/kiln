@@ -38,6 +38,21 @@ fn trim_zero(value: f64, unit: char) -> String {
     format!("{text}{unit}")
 }
 
+/// A byte size in binary units: `512 B`, `3.20 KiB`, `25.36 MiB`.
+pub fn bytes(n: u64) -> String {
+    const UNITS: [&str; 4] = ["KiB", "MiB", "GiB", "TiB"];
+    if n < 1024 {
+        return format!("{n} B");
+    }
+    let mut value = n as f64 / 1024.0;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    format!("{value:.2} {}", UNITS[unit])
+}
+
 /// A running time: seconds under a minute, `3m 29s` past one.
 pub fn elapsed(secs: u64) -> String {
     match secs >= 60 {
